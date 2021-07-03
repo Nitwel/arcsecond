@@ -85,8 +85,8 @@ export type Ok<T, D> = {
   result: T;
   data: D;
 };
-
 export class Parser<T, E = string, D = any> {
+  
   p: StateTransformerFunction<T, E, D>;
 
   constructor(p: StateTransformerFunction<T, E, D>) {
@@ -94,6 +94,11 @@ export class Parser<T, E = string, D = any> {
   }
 
   // run :: Parser e a s ~> x -> Either e a
+  /**
+   * The main way to parse a given input. 
+   * @param target The input to run the parser on.
+   * @returns Returns information about the success of the parsing and what data got parsed.
+   */
   run(target: InputType): ResultType<T, E, D> {
     const state = createParserState(target);
 
@@ -117,6 +122,15 @@ export class Parser<T, E = string, D = any> {
   }
 
   // fork :: Parser e a s ~> x -> (e -> ParserState e a s -> f) -> (a -> ParserState e a s -> b)
+  /**
+   * Similar to {@link Parser.run} it parses the input.
+   * If parsing was successful, the result is transformed using the success transforming function and returned.
+   * If parsing was not successful, the result is transformed using the error transforming function and returned.
+   * @param target The input to run the parser on.
+   * @param errorFn Gets called when the input could not be parsed.
+   * @param successFn Gets called when the input was parsed successfully.
+   * @returns the return value of either error or success function.
+   */
   fork<F>(
     target: InputType, errorFn: (errorMsg: E, parsingState: ParserState<T, E, D>) => F, successFn: (result: T, parsingState: ParserState<T, E, D>) => F
   ) {
@@ -131,6 +145,12 @@ export class Parser<T, E = string, D = any> {
   }
 
   // map :: Parser e a s ~> (a -> b) -> Parser e b s
+  /**
+   * Takes a function and returns a parser. Does not consume input, but instead runs the provided function on the last matched value, and set that as the new last matched value.
+   * This method can be used to apply structure or transform the values as they are being parsed.
+   * @param fn The function to map the result.
+   * @returns Returns a parser with the mapped result.
+   */
   map<T2>(fn: (x: T) => T2): Parser<T | T2, E, D> {
     const p = this.p;
     return new Parser(function Parser$map$state(
@@ -143,6 +163,13 @@ export class Parser<T, E = string, D = any> {
   }
 
   // chain :: Parser e a s ~> (a -> Parser e b s) -> Parser e b s
+  /**
+   * Takes a function which recieves the last matched value and should return a parser.
+   * That parser is then used to parse the following input, forming a chain of parsers based on previous input.
+   * {@link Parser.chain} is the fundamental way of creating contextual parsers.
+   * @param fn 
+   * @returns 
+   */
   chain<T2>(fn: (x?: T) => Parser<T2, E, D>): Parser<T | T2, E, D> {
     const p = this.p;
     return new Parser(function Parser$chain$state(
